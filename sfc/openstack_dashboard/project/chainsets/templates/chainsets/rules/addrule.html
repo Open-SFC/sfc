@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}Create L2Chainset Ruls{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Create L2Chainset Rule") %}
+{% endblock page_header %}
+
+{% block main %}
+    {% include 'project/chainsets/rules/_addrule.html' %}
+{% endblock %}
+

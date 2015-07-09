@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Chain Detail"%}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Chain Detail: ")|add:appliance_map.name %}
+{% endblock page_header %}
+
+{% block main %}
+  {% include "project/chains/appliance_maps/_detail_overview.html" %}
+  <hr>
+  <div id="subnets">
+    {{ appliance_map_confs_table.render }}
+  </div>
+{% endblock %}

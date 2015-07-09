@@ -1,0 +1,23 @@
+{% extends "horizon/common/_modal_form.html" %}
+{% load i18n %}
+{% load url from future %}
+{% block form_id %}launch_chainmap_form{% endblock %}
+{% block form_action %}{% url 'horizon:project:chainmaps:launch' chainmap_id %}{% endblock %}
+
+{% block modal-header %}{% trans "Launch Chain Map" %}{% endblock %}
+
+{% block modal-body %}
+<div class="left">
+    <fieldset>
+    {% include "horizon/common/_form_fields.html" %}
+    </fieldset>
+</div>
+<div class="right">
+    <p>{% trans "Are you really want to Launch Chain Map?" %}</p>
+</div>
+{% endblock %}
+
+{% block modal-footer %}
+  <input class="btn btn-primary pull-right" type="submit" value="{% trans "Ok" %}" />
+  <a href="{% url 'horizon:project:chainmaps:index' %}" class="btn secondary cancel close">{% trans "Cancel" %}</a>
+{% endblock %}

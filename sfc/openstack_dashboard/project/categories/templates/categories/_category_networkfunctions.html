@@ -1,0 +1,10 @@
+{% for category_networkfunction in category_networkfunctions %}
+<ul>
+  <li>
+    {% if category_networkfunction.name|length > 0 %}
+      {{ category_networkfunction.name }}
+    {% endif %}
+    
+  </li>
+</ul>
+{% endfor %}

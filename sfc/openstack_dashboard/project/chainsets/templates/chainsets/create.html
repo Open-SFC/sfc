@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}Create Chainset{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Create Chainset") %}
+{% endblock page_header %}
+
+{% block main %}
+    {% include 'project/chainsets/_create.html' %}
+{% endblock %}

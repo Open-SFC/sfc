@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load url from future %}
+{% block title %}{% trans "CRD Topology" %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("CRD Topology") %}
+{% endblock page_header %}
+
+{% block main %}
+
+<noscript>
+{% trans "This pane needs javascript support." %}
+</noscript>
+
+{% include "project/crd_topology/client_side/_balloon_container.html" %}
+{% include "project/crd_topology/client_side/_balloon_device.html" %}
+{% include "project/crd_topology/client_side/_balloon_port.html" %}
+
+<div class="topologyNavi">
+  <div class="toggleView btn-group" data-toggle="buttons-radio">
+    <button type="button" class="btn small" data-value="small"><i class="icon-th"></i>{%trans "Small" %}</button>
+    <button type="button" class="btn normal" data-value="normal"><i class="icon-th-large"></i>{%trans "Normal" %}</button>
+  </div>
+  
+</div>
+
+<div id="topologyCanvasContainer">
+  <div class="nodata">{% blocktrans %}There are no networks, routers, switches, openflow controllers or connected instances to display.{% endblocktrans %}</div>
+  {% include "project/crd_topology/_svg_element.html" %}
+</div>
+<span data-networktopology="{% url 'horizon:project:crd_topology:json' %}" id="networktopology"></span>
+<div id="topologyMessages"></div>
+{% endblock %}

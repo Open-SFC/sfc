@@ -1,0 +1,16 @@
+{% load i18n sizeformat %}
+
+<h3>{% trans "Chainset Overview" %}</h3>
+
+<div class="info detail">
+  <dl>
+    <dt>{% trans "Name" %}</dt>
+    <dd>{{ chainset.name|default:"None" }}</dd>
+    <dt>{% trans "ID" %}</dt>
+    <dd>{{ chainset.id|default:"None" }}</dd>
+    <dt>{% trans "Inbound Network" %}</dt>
+    <dd>{{ chainset.inbound_network_id|default:"None" }}</dd>
+    <dt>{% trans "Outbound Network" %}</dt>
+    <dd>{{ chainset.outbound_network_id|default:"None" }}</dd>
+  </dl>
+</div>
