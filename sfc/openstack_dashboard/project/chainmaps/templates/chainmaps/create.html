@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}Create Chain Map{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Create Chain Map") %}
+{% endblock page_header %}
+
+{% block main %}
+    {% include 'project/chainmaps/_create.html' %}
+{% endblock %}

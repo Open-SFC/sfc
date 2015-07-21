@@ -1,0 +1,10 @@
+{% for appliance_map_conf in appliance_map_confs %}
+<ul>
+  <li>
+    {% if appliance_map_conf.name|length > 0 %}
+      {{ appliance_map_conf.name }}
+    {% endif %}
+    
+  </li>
+</ul>
+{% endfor %}

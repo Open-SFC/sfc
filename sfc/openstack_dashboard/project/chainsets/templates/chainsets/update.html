@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Update L2 Chainset" %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Update L2 Chainset") %}
+{% endblock page_header %}
+
+{% block main %}
+  {% include 'project/chainsets/_update.html' %}
+{% endblock %}

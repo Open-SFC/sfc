@@ -1,0 +1,24 @@
+{% extends "horizon/common/_modal_form.html" %}
+{% load i18n %}
+{% load url from future %}
+{% block form_id %}create_map_form{% endblock %}
+{% block form_action %}{% url 'horizon:project:appliances:create' %}{% endblock %}
+
+{% block modal-header %}{% trans "Create Appliance" %}{% endblock %}
+
+{% block modal-body %}
+<div class="left">
+    <fieldset>
+        {% include "horizon/common/_form_fields.html" %}
+    </fieldset>
+</div>
+<div class="right">
+    <h3>{% trans "Description" %}:</h3>
+    <p>{% trans "Map Category & Vendor to image."%}</p>
+</div>
+{% endblock %}
+
+{% block modal-footer %}
+  <input class="btn btn-primary pull-right" type="submit" value="{% trans "Create Appliance" %}" />
+  <a href="{% url 'horizon:project:appliances:index' %}" class="btn secondary cancel close">{% trans "Cancel" %}</a>
+{% endblock %}
