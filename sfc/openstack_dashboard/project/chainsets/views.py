@@ -26,9 +26,10 @@ from openstack_dashboard import api
 from horizon import exceptions
 from horizon import forms
 from horizon import tables
-from .tables import ChainsetsTable
+from .tables import ChainsetsTable 
 from .forms import CreateChainset, UpdateChainset
 from .rules.tables import ChainrulesTable
+from .zones.tables import SFCZonesTable
 
 LOG = logging.getLogger(__name__)
 
@@ -42,6 +43,14 @@ class IndexView(tables.DataTableView):
             tenant_id = self.request.user.tenant_id
             chainsets = api.sfc.chainset_list_for_tenant(self.request,
                                                          tenant_id)
+            
+            directions = {'1': 'Zoneless',
+                          '2': 'Left',
+                          '3': 'Right'}
+            for cs in chainsets:
+                direction = cs.direction
+                direction = directions[direction]
+                setattr(cs, 'dir', direction)
         except:
             chainsets = []
             msg = _('Chainset list can not be retrieved.')
@@ -85,7 +94,8 @@ class UpdateChainsetView(forms.ModalFormView):
         return {'chainset_id': chainset['id'],
                 'tenant_id': chainset['tenant_id'],
                 'name': chainset['name'],
-                'type': chainset['type']}
+                'zonefull': chainset['zonefull'],
+                'direction': chainset['direction'],}
 
 
 class DetailChainsetView(tables.DataTableView):
@@ -121,5 +131,49 @@ class DetailChainsetView(tables.DataTableView):
 
     def get_context_data(self, **kwargs):
         context = super(DetailChainsetView, self).get_context_data(**kwargs)
+        context["chainset"] = self._get_data()
+        return context
+
+class SFCZonesView(tables.DataTableView):
+    table_class = SFCZonesTable
+    template_name = 'project/chainsets/zones.html'
+    failure_url = reverse_lazy('horizon:project:chainsets:index')
+
+    def get_data(self):
+        try:
+            chainset = self._get_data()
+            zones = api.sfc.zone_list_for_chainset(self.request,
+                                                        chainset.id)
+            directions = {'1': 'Zoneless',
+                          '2': 'Left',
+                          '3': 'Right'}
+            for zone in zones:
+                direction = zone.direction
+                direction = directions[direction]
+                setattr(zone, 'dir', direction)
+            
+        except:
+            zones = []
+            msg = _('Rule list can not be retrieved.')
+            exceptions.handle(self.request, msg)
+        for s in zones:
+            s.set_id_as_name_if_empty()
+        return zones
+
+    def _get_data(self):
+        if not hasattr(self, "_chainset"):
+            try:
+                chainset_id = self.kwargs['chainset_id']
+                chainset = api.sfc.chainset_get(self.request, chainset_id)
+                chainset.set_id_as_name_if_empty(length=0)
+            except:
+                msg = _('Unable to retrieve details for Chainset "%s".') \
+                    % (chainset_id)
+                exceptions.handle(self.request, msg, redirect=self.failure_url)
+            self._chainset = chainset
+        return self._chainset
+
+    def get_context_data(self, **kwargs):
+        context = super(SFCZonesView, self).get_context_data(**kwargs)
         context["chainset"] = self._get_data()
         return context

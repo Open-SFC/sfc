@@ -676,7 +676,7 @@ def bypass_rule_get(request, chain_id, bypass_rule_id, **params):
 class Chainset(CrdAPIDictWrapper):
 
     """Wrapper for crd chainsets"""
-    _attrs = ['name', 'id', 'tenant_id']
+    _attrs = ['name', 'id', 'tenant_id', 'zonefull', 'direction']
 
     def __init__(self, apiresource):
         super(Chainset, self).__init__(apiresource)
@@ -1245,3 +1245,53 @@ def appliance_map_instance_list_for_chain(request, chain_id, appliance_map_id, *
     #appliance_map_instances += appliance_map_instance_list(request, shared=True, **params)
 
     return appliance_map_instances
+
+#############Zones#######################
+class Zone(CrdAPIDictWrapper):
+
+    """Wrapper for crd chainsets"""
+    _attrs = ['id', 'zone', 'chainset_id', 'direction', 'tenent_id']
+
+    def __init__(self, apiresource):
+        super(Zone, self).__init__(apiresource)
+
+
+def zone_list(request, chainset_id, **params):
+    LOG.debug("zone_list(): params=%s" % (params))
+    zones = crdclient(request).list_zones(chainset_id, **params).get('zones')
+    return [Zone(n) for n in zones]
+
+
+def zone_list_for_chainset(request, chainset_id, **params):
+    LOG.debug("zone_list_for_chain(): chainset_id=%s, params=%s"
+              % (chainset_id, params))
+    zones = zone_list(request, chainset_id=chainset_id, **params)
+
+    return zones
+
+
+def zone_create(request, chainset_id, **kwargs):
+    LOG.debug("zone_create(): kwargs = %s" % kwargs)
+    body = {'zone': kwargs}
+    zone = crdclient(request).create_zone(chainset_id, body=body).get('zone')
+    return Zone(zone)
+
+
+def zone_delete(request, chainset_id, zone_id):
+    LOG.debug("zone_delete(): zone_id=%s" % zone_id)
+    crdclient(request).delete_zone(chainset_id, zone_id)
+
+
+def zone_modify(request, chainset_id, zone_id, **kwargs):
+    LOG.debug("zone_modify(): cateid=%s, params=%s" % (zone_id, kwargs))
+    body = {'zone': kwargs}
+    zone = crdclient(request).update_zone(chainset_id, zone_id,
+                                          body=body).get('zone')
+    return Zone(zone)
+
+
+def zone_get(request, chainset_id, zone_id, **params):
+    LOG.debug("zone_get(): catid=%s, params=%s" % (zone_id, params))
+    zone = crdclient(request).show_zone(chainset_id, zone_id,
+                                        **params).get('zone')
+    return Zone(zone)

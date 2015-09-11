@@ -275,20 +275,26 @@ class SFCConsumerPlugin(proxy.RpcProxy):
             chain_set_name = payload.get('chainset_id')[:16]
             chain_set_name = payload.get('name') + "_" + chain_set_name
             tenant = payload.get('tenant_id')
+            zonefull = payload.get('zonefull')
+            direction = payload.get('direction')
 
             msg = {"chain_set":{"name": chain_set_name,
-                    "id": payload.get('chainset_id'),
-                    "tenant": tenant,
-                    "admin_status": True,
-                   }
-            }
+                                "zonefull": zonefull,
+                                "id": payload.get('chainset_id'),
+                                "tenant": tenant,
+                                "admin_status": True,
+                                "direction": direction
+                                }
+                }
         elif message_type == 'update_chain_set':
             chain_set_name = payload.get('name')
             chain_set_name = payload.get('chainset_id')[:16]
             chain_set_name = payload.get('name') + "_" + chain_set_name
+            zonefull = payload.get('zonefull')
 
             msg = {"chain_set":{"name": chain_set_name,
                     "admin_status": True,
+                    "zonefull": zonefull,
                    }
             }
         elif message_type == 'create_chain_selection_rule':
@@ -482,7 +488,7 @@ class SFCConsumerPlugin(proxy.RpcProxy):
             }
         elif message_type == 'create_appliance_instance':
             tenant = payload.get('tenant_id')
-            msg = {"appliance_instance":{"id": payload.get('appliance_instance_id'),
+            msg = {"service_instance":{"id": payload.get('appliance_instance_id'),
                                          "chain_appliance_id": payload.get('chain_appliance_id'),
                                          "instance_id": payload.get('instance_uuid'),
                                          "network_id": payload.get('network_id'),
@@ -492,7 +498,7 @@ class SFCConsumerPlugin(proxy.RpcProxy):
                                          }
                 }
         elif message_type == 'update_appliance_instance':
-            msg = {"appliance_instance":
+            msg = {"service_instance":
                        {
                            "chain_appliance_id": payload.get(
                                'chain_appliance_id'),
@@ -502,6 +508,32 @@ class SFCConsumerPlugin(proxy.RpcProxy):
                            "vlan_out": payload.get('vlan_out'),
                        }
             }
+        elif message_type == 'create_chainset_zone':
+            tenant = payload.get('tenant_id')
+            zone_id = payload.get('zone_id')
+            zone = payload.get('zone')
+            direction = payload.get('direction')
+            chain_set_id = payload.get('chainset_id')
+            
+            msg = {"chainset_zone":{"name": zone,
+                    "id": zone_id,
+                    "direction": direction,
+                    "chain_set_id": chain_set_id,
+                    "tenant": tenant,
+                   }
+            }
+        elif message_type == 'update_chainset_zone':
+            tenant = payload.get('tenant_id')
+            zone_id = payload.get('zone_id')
+            zone = payload.get('zone')
+            direction = payload.get('direction')
+            chain_set_id = payload.get('chainset_id')
+            msg = {"chainset_zone":{"name": zone,
+                    "direction": direction,
+                    "chain_set_id": chain_set_id,
+                   }
+            }
+            
         return msg
     
     
@@ -784,7 +816,8 @@ class SFCConsumerPlugin(proxy.RpcProxy):
         LOG.info(_("Create appliance_instance Body - %s"), str(kwargs))
         payload = kwargs['payload']
         chain_id = payload.get('chain_id')
-        chain_map_id = payload.get('chain_appliance_id')
+        #chain_map_id = payload.get('chain_appliance_id')
+        chain_map_id = payload.get('appliance_map_id')
         body = self.build_ucm_wsgi_msg(payload, 'create_appliance_instance')
         self.uc.create_appliance_instance(chain_id, chain_map_id, body=body)
         
@@ -826,7 +859,42 @@ class SFCConsumerPlugin(proxy.RpcProxy):
         self.uc.show_appliance_instance(chain_id, chain_map_id,
                                         appliance_instance_id,
                                         **params)
-
+    
+    ###
+    ###Chainset to Zone - Direction Mappings
+    ###
+    def create_chainset_zone(self, context, **kwargs):
+        payload = kwargs['payload']
+        chain_set_id = payload.get('chainset_id')
+        body = self.build_ucm_wsgi_msg(payload, 'create_chainset_zone')
+        #LOG.info(_("Create chainset_zone Body - %s"), str(body))
+        self.uc.create_chainset_zone(chain_set_id, body=body)
+        
+    def delete_chainset_zone(self, context, **kwargs):
+        payload = kwargs['payload']
+        chain_set_id = payload.get('chainset_id')
+        chainset_zone_id = payload.get('zone_id')
+        #LOG.info(_("Delete chainset_zone Name- %s"), str(chainset_zone_id))
+        self.uc.delete_chainset_zone(chain_set_id, chainset_zone_id)
+        
+    def update_chainset_zone(self, context, **kwargs):
+        payload = kwargs['payload']
+        chain_set_id = payload.get('chainset_id')
+        chainset_zone_id = payload.get('zone_id')
+        body = self.build_ucm_wsgi_msg(payload, 'update_chainset_zone')
+        #LOG.info(_("Update chainset_zone ID- %s and body=%s"), str(chainset_zone_id), str(body))
+        self.uc.update_chainset_zone(chain_set_id, chainset_zone_id, body=body)
+        
+    def get_chainset_zones(self, payload, **params):
+        #LOG.info(_("List Chainset Zone - Direction Mappings"))
+        chain_set_id = payload.get('chainset_id')
+        self.uc.list_chainset_zones(chain_set_id, **params)
+        
+    def get_chainset_zone(self, payload, **params):
+        chain_set_id = payload.get('chainset_id')
+        chainset_zone_id = payload.get('zone_id')
+        #LOG.info(_("Show chainset_zone Details for - %s"), str(chainset_zone_id))
+        self.uc.show_chainset_zone(chain_set_id, chainset_zone_id, **params)
 
 def ocasclient():
     c = ocas_client.Client()

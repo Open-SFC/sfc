@@ -16,8 +16,9 @@
 from django.conf.urls import patterns, url, include
 
 
-from .views import IndexView, CreateChainsetView, UpdateChainsetView, DetailChainsetView
+from .views import IndexView, CreateChainsetView, UpdateChainsetView, DetailChainsetView, SFCZonesView
 from .rules.views import Addruleview, EditruleView, LaunchChainView, RuleDetailView
+from .zones.views import Addzoneview, EditzoneView
 from .rules import urls as rule_urls
 CHAINSET = r'^(?P<chainset_id>[^/]+)/%s$'
 
@@ -36,4 +37,10 @@ urlpatterns = patterns('',
                            EditruleView.as_view(), name='editrule'),
                        url(r'^(?P<chainset_id>[^/]+)/rules/(?P<rule_id>[^/]+)/launch$',
                            LaunchChainView.as_view(), name='launch'),
-                       url(r'^(?P<chainset_id>[^/]+)/rules/(?P<rule_id>[^/]+)/ruledetail$', RuleDetailView.as_view(), name='ruledetail'),)
+                       url(r'^(?P<chainset_id>[^/]+)/rules/(?P<rule_id>[^/]+)/ruledetail$', RuleDetailView.as_view(), name='ruledetail'),
+                       url(CHAINSET %
+                           'zones', SFCZonesView.as_view(), name='zones'),
+                       url(CHAINSET % 'addzone',
+                           Addzoneview.as_view(), name='addzone'),
+                       url(r'^(?P<chainset_id>[^/]+)/zones/(?P<zone_id>[^/]+)/editzone$',
+                           EditzoneView.as_view(), name='editzone'))

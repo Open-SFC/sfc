@@ -94,6 +94,9 @@ class Client(object):
     
     appliance_map_instances_path = "/sfc/chains/%s/appliances/%s/instances"
     appliance_map_instance_path = "/sfc/chains/%s/appliances/%s/instances/%s"
+    
+    zones_path = "/sfc/chainsets/%s/zones"
+    zone_path = "/sfc/chainsets/%s/zones/%s"
 
     
     ######################################## NSRM Start #############################################
@@ -647,6 +650,43 @@ class Client(object):
         """
         # Pass filters in "params" argument to do_request
         return self.crdclient.get(self.bypass_rules_path % (chain_id), params=_params)
+    
+    #################SFC Zones########################################################
+    @crd_client.APIParamsCall
+    def list_zones(self, chainset_id, **_params):
+        """
+        Fetches a list of all zones for a tenant
+        """
+        # Pass filters in "params" argument to do_request
+        return self.crdclient.get(self.zones_path % (chainset_id), params=_params)
+        
+    @crd_client.APIParamsCall
+    def create_zone(self, chainset_id, body=None):
+        """
+        Creates a new Chain_Rule
+        """
+        return self.crdclient.post(self.zones_path % (chainset_id), body=body)
+        
+    @crd_client.APIParamsCall
+    def delete_zone(self, chainset_id, zone):
+        """
+        Deletes the specified zone
+        """
+        return self.crdclient.delete(self.zone_path  % (chainset_id, zone))
+    
+    @crd_client.APIParamsCall
+    def show_zone(self, chainset_id, zone, **_params):
+        """
+        Fetches information of a certain zone
+        """
+        return self.crdclient.get(self.zone_path % (chainset_id, zone), params=_params)
+        
+    @crd_client.APIParamsCall
+    def update_zone(self, chainset_id, zone, body=None):
+        """
+        Updates a zone
+        """
+        return self.crdclient.put(self.zone_path % (chainset_id, zone), body=body)
     
     ################### NW Service Delta ##############################    
     @crd_client.APIParamsCall

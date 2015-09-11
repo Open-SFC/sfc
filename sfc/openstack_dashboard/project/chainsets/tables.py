@@ -55,14 +55,31 @@ class EditChainset(tables.LinkAction):
     url = "horizon:project:chainsets:update"
     classes = ("ajax-modal", "btn-edit")
 
+class ShowSFCZones(tables.LinkAction):
+    name = "zones"
+    verbose_name = _("Show SFC Zones")
+    url = "horizon:project:chainsets:zones"
+
+class AddZone(tables.LinkAction):
+    name = "addzone"
+    verbose_name = _("Add Zone")
+    url = "horizon:project:chainsets:addzone"
+    classes = ("ajax-modal", "btn-create")
+
+    def get_link_url(self, datum=None):
+        return reverse(self.url, args=(datum.id,))
 
 class ChainsetsTable(tables.DataTable):
     name = tables.Column("name",
                          verbose_name=_("Name"),
                          link='horizon:project:chainsets:detail')
+    zonefull = tables.Column("zonefull",
+                         verbose_name=_("SFC Zones"))
+    dir = tables.Column("dir",
+                         verbose_name=_("Default Direction"))
 
     class Meta:
         name = "chainsets"
         verbose_name = _("Chainset List")
         table_actions = (CreateChainset, DeleteChainset)
-        row_actions = (DeleteChainset, )
+        row_actions = (ShowSFCZones, EditChainset, AddZone, DeleteChainset, )

@@ -39,6 +39,7 @@ class Client(object):
         attributes = 'attributes'
         vlanpairs = 'instance'
         appliance_instance = 'instance'
+        chainset_zones = 'zones'
         
         
         #NSRM URLs
@@ -79,6 +80,10 @@ class Client(object):
         self.appliance_instance_path = "%s/sfc/%s" % (url, chains) + "/%s" +\
                                        "/%s" % chain_services + "/%s" + \
                                        "/%s" % appliance_instance + "/%s"
+        self.chainset_zones_path = "%s/sfc/%s" % (url, chain_sets) + \
+                                        "/%s" + "/%s" % (chainset_zones)
+        self.chainset_zone_path = "%s/sfc/%s" % (url, chain_sets) + \
+                                        "/%s" + "/%s" % (chainset_zones) + "/%s"
     
     
     ##Chains
@@ -395,3 +400,34 @@ class Client(object):
         Fetches information of a vlan_pair
         """
         return self.ocasclient.get(self.appliance_instance_path % (chain_id, chain_map_id, appliance_instance_id), params=_params)
+    
+    ##Chainset Zone - Direction Mappings
+    def create_chainset_zone(self, chain_set_id, body=None):
+        """
+        Creates a new chainset_zone
+        """
+        return self.ocasclient.post(self.chainset_zones_path % (chain_set_id), body=body)
+        
+    def delete_chainset_zone(self, chain_set_id, chainset_zone):
+        """
+        Deletes the specified chainset_zone
+        """
+        return self.ocasclient.delete(self.chainset_zone_path % (chain_set_id, chainset_zone))
+        
+    def update_chainset_zone(self, chain_set_id, chainset_zone, body=None):
+        """
+        Updates the specified chainset_zone
+        """
+        return self.ocasclient.put(self.chainset_zone_path % (chain_set_id, chainset_zone), body=body)
+        
+    def list_chainset_zones(self, chain_set_id, **_params):
+        """
+        Fetches a list of all chainset_zones
+        """
+        return self.ocasclient.list('chainset_zones', self.chainset_zones_path % (chain_set_id), True, **_params)
+        
+    def show_chainset_zone(self, chain_set_id, chainset_zone, **_params):
+        """
+        Fetches information of a chainset_zone
+        """
+        return self.ocasclient.get(self.chainset_zone_path % (chain_set_id, chainset_zone), params=_params)
