@@ -66,13 +66,16 @@ class Editzone(forms.SelfHandlingForm):
             ("3", _("Right")),
             )
     chainset_id = forms.CharField(widget=forms.HiddenInput())
+    zone_id = forms.CharField(label=_("Zone ID"),
+                           widget=forms.TextInput(
+        attrs={'readonly': 'readonly'}))
     zone = forms.CharField(label=_("Zone"),
                            widget=forms.TextInput(
         attrs={'readonly': 'readonly'}))
     direction = forms.ChoiceField(label=_("Direction"),
                                        required=True,
                                        choices=DIRECTIONS)
-    failure_url = 'horizon:project:chainsets:zones'
+    failure_url = 'horizon:project:chainsets:index'
 
     def handle(self, request, data):
         try:
