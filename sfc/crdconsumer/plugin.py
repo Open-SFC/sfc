@@ -518,10 +518,10 @@ class SFCConsumerPlugin(proxy.RpcProxy):
             msg = {"service_instance":{"id": payload.get('appliance_instance_id'),
                                          "chain_service_id": payload.get('appliance_map_id'),
                                          "instance_id": payload.get('instance_uuid'),
-                                         "network_id": payload.get('network_id'),
+                                         #"network_id": payload.get('network_id'),
                                          "vlan_in": payload.get('vlan_in'),
                                          "vlan_out": payload.get('vlan_out'),
-                                         "tenant": tenant,
+                                         #"tenant": tenant,
                                          }
                 }
         elif message_type == 'update_appliance_instance':
@@ -530,7 +530,7 @@ class SFCConsumerPlugin(proxy.RpcProxy):
                            "chain_service_id": payload.get(
                                'appliance_map_id'),
                            "instance_id": payload.get('instance_uuid'),
-                           "network_id": payload.get('network_id'),
+                           #"network_id": payload.get('network_id'),
                            "vlan_in": payload.get('vlan_in'),
                            "vlan_out": payload.get('vlan_out'),
                        }
