@@ -331,7 +331,7 @@ class SFCConsumerPlugin(proxy.RpcProxy):
                     "tenant": tenant,
                     "chain_id": chain_id,
                     "chain_set_id": chain_set_id,
-                    "protocol": ip_protocol,
+                    "protocol": int(ip_protocol),
                     "admin_status": True,
                    }
             }
@@ -358,22 +358,22 @@ class SFCConsumerPlugin(proxy.RpcProxy):
                 
             ##IP Address
             if sip_type.lower() == 'single':
-                msg['chain_selection_rule'].update({'sip_type': sip_type,
+                msg['chain_selection_rule'].update({'sip_type': sip_type.capitalize(),
                                                   'sip_start': sip_start,
                                                   'sip_end': sip_start})
             elif sip_type.lower() in ['range', 'subnet']:
-                msg['chain_selection_rule'].update({'sip_type': sip_type,
+                msg['chain_selection_rule'].update({'sip_type': sip_type.capitalize(),
                                                   'sip_start': sip_start,
                                                   'sip_end': sip_end})
             else:
                 msg['chain_selection_rule'].update({'sip_type':'Any'})
                 
             if dip_type.lower() == 'single':
-                msg['chain_selection_rule'].update({'dip_type': dip_type,
+                msg['chain_selection_rule'].update({'dip_type': dip_type.capitalize(),
                                                   'dip_start': dip_start,
                                                   'dip_end': dip_start})
             elif dip_type.lower() in ['range', 'subnet']:
-                msg['chain_selection_rule'].update({'dip_type': dip_type,
+                msg['chain_selection_rule'].update({'dip_type': dip_type.capitalize(),
                                                   'dip_start': dip_start,
                                                   'dip_end': dip_end})
             else:
@@ -381,22 +381,47 @@ class SFCConsumerPlugin(proxy.RpcProxy):
                 
             ##Port
             if sp_type.lower() == 'single':
-                msg['chain_selection_rule'].update({'sp_type':sp_type,
+		if sp_start:
+		  sp_start = int(sp_start)
+		else:
+		  sp_start = 0
+                msg['chain_selection_rule'].update({'sp_type':sp_type.capitalize(),
                                                   'sp_start':sp_start,
                                                   'sp_end':sp_start})
             elif sp_type.lower() == 'range':
-                msg['chain_selection_rule'].update({'sp_type':sp_type,
+		if sp_start:
+		  sp_start = int(sp_start)
+		else:
+		  sp_start = 0
+		if dp_end:
+		  sp_end = int(sp_end)
+		else:
+		  sp_end = 0
+                msg['chain_selection_rule'].update({'sp_type':sp_type.capitalize(),
                                                   'sp_start':sp_start,
                                                   'sp_end':sp_end})
             else:
                 msg['chain_selection_rule'].update({'sp_type':'Any'})
                 
             if dp_type.lower() == 'single':
-                msg['chain_selection_rule'].update({'dp_type':dp_type,
+		if dp_start:
+		  dp_start = int(dp_start)
+		else:
+		  dp_start = 0
+                msg['chain_selection_rule'].update({'dp_type':dp_type.capitalize(),
                                                   'dp_start':dp_start,
                                                   'dp_end':dp_start})
             elif dp_type.lower() == 'range':
-                msg['chain_selection_rule'].update({'dp_type':dp_type,
+		if dp_start:
+		  dp_start = int(dp_start)
+		else:
+		  dp_start = 0
+		if dp_end:
+		  dp_end = int(dp_end)
+		else:
+		  dp_end = 0
+
+                msg['chain_selection_rule'].update({'dp_type':dp_type.capitalize(),
                                                   'dp_start':dp_start,
                                                   'dp_end':dp_end})
             else:
@@ -431,7 +456,7 @@ class SFCConsumerPlugin(proxy.RpcProxy):
             msg = {"chain_selection_rule":{"name": selection_rule_name,
                     "chain_id": chain_id,
                     "chain_set_id": chain_set_id,
-                    "protocol": ip_protocol,
+                    "protocol": int(ip_protocol),
                     "admin_status": True,
                    }
             }
@@ -491,7 +516,7 @@ class SFCConsumerPlugin(proxy.RpcProxy):
         elif message_type == 'create_appliance_instance':
             tenant = payload.get('tenant_id')
             msg = {"service_instance":{"id": payload.get('appliance_instance_id'),
-                                         "chain_appliance_id": payload.get('chain_appliance_id'),
+                                         "chain_service_id": payload.get('appliance_map_id'),
                                          "instance_id": payload.get('instance_uuid'),
                                          "network_id": payload.get('network_id'),
                                          "vlan_in": payload.get('vlan_in'),
@@ -502,8 +527,8 @@ class SFCConsumerPlugin(proxy.RpcProxy):
         elif message_type == 'update_appliance_instance':
             msg = {"service_instance":
                        {
-                           "chain_appliance_id": payload.get(
-                               'chain_appliance_id'),
+                           "chain_service_id": payload.get(
+                               'appliance_map_id'),
                            "instance_id": payload.get('instance_uuid'),
                            "network_id": payload.get('network_id'),
                            "vlan_in": payload.get('vlan_in'),
@@ -818,7 +843,6 @@ class SFCConsumerPlugin(proxy.RpcProxy):
         LOG.info(_("Create appliance_instance Body - %s"), str(kwargs))
         payload = kwargs['payload']
         chain_id = payload.get('chain_id')
-        #chain_map_id = payload.get('chain_appliance_id')
         chain_map_id = payload.get('appliance_map_id')
         body = self.build_ucm_wsgi_msg(payload, 'create_appliance_instance')
         self.uc.create_appliance_instance(chain_id, chain_map_id, body=body)
