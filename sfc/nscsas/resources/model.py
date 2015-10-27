@@ -196,13 +196,36 @@ class ChainSet(Model):
     :param admin_status: Admin Status (Enable / Disable)
     """
 
-    def __init__(self, id, name, tenant, admin_status):
+    def __init__(self, id, name, tenant, admin_status, zonefull=False,
+                 direction=1):
         Model.__init__(
             self,
             id=id,
             name=name,
             tenant=tenant,
-            admin_status=admin_status
+            admin_status=admin_status,
+            zonefull=zonefull,
+            direction=direction
+        )
+
+
+class ChainSetZone(Model):
+    """
+    Chain Set Zone details.
+
+    :param id: UUID of the chain set
+    :param name: The chain set Zone name
+    :param direction: Direction to which this chain set belongs
+
+    """
+
+    def __init__(self, id, name, direction, chain_set_id):
+        Model.__init__(
+            self,
+            id=id,
+            name=name,
+            direction=direction,
+            chain_set_id=chain_set_id
         )
 
 
@@ -220,21 +243,26 @@ class ChainSelRule(Model):
     :param dst_mac_type: Destination MAC Type (Any / Single)
     :param dst_mac: Destination MAC Address
     :param sip_type: Source IP Type (Any / Single / Range / Subnet)
-    :param sip_start: Source IP address for type single or Start IP Address in case of Range
-                       or IP Network part in case of subnet
-    :param sip_end: Source IP address for type single or End IP Address in case of Range
-                       or IP Mask digits part in case of subnet
+    :param sip_start: Source IP address for type single or Start IP Address
+                      in case of Range or IP Network part in case of subnet
+    :param sip_end: Source IP address for type single or End IP Address in
+                    case of Range or IP Mask digits part in case of subnet
     :param dip_type: Destination IP Type (Any / Single / Range / Subnet)
-    :param dip_start: Destination IP address for type single or Start IP Address in case of Range
-                       or IP Network part in case of subnet
-    :param dip_end: Destination IP address for type single or End IP Address in case of Range
-                       or IP Mask digits part in case of subnet
+    :param dip_start: Destination IP address for type single or Start IP
+                      Address in case of Range or IP Network part in case of
+                      subnet
+    :param dip_end: Destination IP address for type single or End IP Address in
+                    case of Range or IP Mask digits part in case of subnet
     :param sp_type: Source Port Type (Any / Single / Range)
-    :param sp_start: Source Port Number for type single or Start Port number in case of Range
-    :param sp_end: Source Port Number for type single or End Port number in case of Range
+    :param sp_start: Source Port Number for type single or Start Port number in
+                     case of Range
+    :param sp_end: Source Port Number for type single or End Port number in
+                   case of Range
     :param dp_type: Destination Port Type (Any / Single / Range)
-    :param dp_start: Destination Port Number for type single or Start Port number in case of Range
-    :param dp_end: Destination Port Number for type single or End Port number in case of Range
+    :param dp_start: Destination Port Number for type single or Start Port
+                     number in case of Range
+    :param dp_end: Destination Port Number for type single or End Port number
+                   in case of Range
     :param protocol: IP Protocol Number
     :param chain_set_id: Chain Set ID to which this rule belongs
     :param chain_id: Chain ID to which this rule belongs
@@ -245,9 +273,11 @@ class ChainSelRule(Model):
                  eth_type, src_mac_type, dst_mac_type,
                  sip_type,  dip_type,
                  sp_type, dp_type, protocol, chain_id, chain_set_id,
-                 admin_status, sip_start='0.0.0.0', sip_end='0.0.0.0', sp_start=1,
-                 sp_end=65535, dp_start=1, dp_end=65535, dip_start='0.0.0.0',
-                 dip_end='0.0.0.0', src_mac='00:00:00:00:00:00', dst_mac='00:00:00:00:00:00', eth_value=0x800):
+                 admin_status, sip_start='0.0.0.0', sip_end='0.0.0.0',
+                 sp_start=1, sp_end=65535, dp_start=1, dp_end=65535,
+                 dip_start='0.0.0.0', dip_end='0.0.0.0',
+                 src_mac='00:00:00:00:00:00', dst_mac='00:00:00:00:00:00',
+                 eth_value=0x800):
         Model.__init__(
             self,
             id=id,

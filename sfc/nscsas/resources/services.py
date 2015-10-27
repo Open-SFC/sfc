@@ -88,6 +88,11 @@ class ServiceController(BaseController):
                                                 'mandatory': False,
                                                 'default': 'Virtual'}],
         'enabled': ['admin_status', {'type': 'boolean', 'mandatory': False}],
+        'loadsharealg': ['load_share_algorithm', {'type': 'string', 'mandatory': True}],
+        'type': ['type', {'type': 'string', 'mandatory': True}],
+        'loadindication': ['load_indication_type', {'type': 'string', 'mandatory': True}],
+        'highthreshold': ['high_threshold', {'type': 'uint', 'mandatory': False}],
+        'lowthreshold': ['low_threshold', {'type': 'uint', 'mandatory': False}]
     }
     dmpath = 'nsrm.service'
 

@@ -108,6 +108,19 @@ class ChainSet(Base):
     name = Column(String(255), nullable=False)
     tenant = Column(String(36))
     admin_status = Column(Boolean)
+    zonefull = Column(Boolean)
+    direction = Column(SmallInteger)
+
+
+class ChainSetZone(Base):
+    """SFC Chain Set"""
+    __tablename__ = 'sfc_chain_set_zones'
+    __table_args__ = {'useexisting': True}
+
+    id = Column(String(36), primary_key=True, unique=True)
+    name = Column(String(255), nullable=False)
+    direction = Column(SmallInteger)
+    chain_set_id = Column(String(36), ForeignKey('sfc_chain_set.id'))
 
 
 class ChainSelectionRules(Base):
@@ -550,7 +563,9 @@ class SFCDBMixin(object):
         return api_model.ChainSet(id=row.id,
                                   name=row.name,
                                   tenant=row.tenant,
-                                  admin_status=row.admin_status)
+                                  admin_status=row.admin_status,
+                                  zonefull=row.zonefull,
+                                  direction=row.direction)
 
     def create_chain_set(self, chain_set):
         """
@@ -608,6 +623,75 @@ class SFCDBMixin(object):
         session = get_session()
         with session.begin():
             session.query(ChainSet).filter(ChainSet.id == chain_set_id).delete()
+            session.flush()
+
+    @staticmethod
+    def _row_to_chain_set_zone(row):
+        return api_model.ChainSetZone(id=row.id,
+                                      name=row.name,
+                                      direction=row.direction,
+                                      chain_set_id=row.chain_set_id)
+
+    def create_chain_set_zone(self, chain_set_zone):
+        """
+        Insert Chain Set Zone record into database
+
+        :return:
+                Chain data if the insertion is successful
+                revoke transaction and raise exception
+        """
+        session = get_session()
+        with session.begin():
+            chain_set_zone_row = ChainSetZone(id=chain_set_zone.id)
+            chain_set_zone_row.update(chain_set_zone.as_dict())
+            session.add(chain_set_zone_row)
+            session.flush()
+        return self._row_to_chain_set_zone(chain_set_zone_row)
+
+    def get_chain_set_zones(self, chain_set_zone_id=None, name=None,
+                            chain_set_id=None, pagination=None):
+        """
+        Yields a lists of Chain Set zones that match filters
+
+        :param name: Optional name to return one chain set zone name.
+        :param chain_set_zone_id: Optional Chain set zone id
+        :param chain_set_id: Optional chain_set_id to return one chain Set.
+        :param pagination: Optional pagination query.
+        """
+        session = get_session()
+        if pagination:
+            raise NotImplementedError(_('Pagination not implemented'))
+
+        query = session.query(ChainSetZone)
+        query.filter(ChainSetZone.chain_set_id == chain_set_id)
+        if name is not None:
+            query = query.filter(ChainSetZone.name == name)
+        if chain_set_zone_id is not None:
+            query = query.filter(ChainSetZone.id == chain_set_zone_id)
+
+        return (self._row_to_chain_set_zone(x) for x in query.all())
+
+    def update_chain_set_zone(self, chain_set_zone):
+        """
+        Update an Chain Set.
+        """
+        session = get_session()
+        with session.begin():
+            zone_row = session.merge(ChainSetZone(id=chain_set_zone.id))
+            zone_row.update(chain_set_zone.as_dict())
+            session.flush()
+
+        return self._row_to_chain_set_zone(zone_row)
+
+    @staticmethod
+    def delete_chain_set_zone(chain_set_zone_id):
+        """
+        Delete a Chain Set
+        """
+        session = get_session()
+        with session.begin():
+            session.query(ChainSetZone).filter(ChainSetZone.id ==
+                                           chain_set_zone_id).delete()
             session.flush()
 
     @staticmethod

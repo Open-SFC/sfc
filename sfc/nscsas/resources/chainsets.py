@@ -388,6 +388,274 @@ class ChainSelRuleController(BaseController):
         #UCM Configuration End
 
 
+class ChainSetZone(_Base):
+    """
+    Representation of Chain Set Structure
+    """
+    id = BoundedStr(minlen=36, maxlen=36)
+    "The UUID of the chain set"
+
+    name = BoundedStr(maxlen=255)
+    "The name for the chain set"
+
+    direction = int
+    "zone Direction. (1-left, 2-right)"
+
+
+class ChainSetZonesResp(_Base):
+    """
+    Representation of Chain set Zones list Response
+    """
+    chainset_zones = [ChainSetZone]
+
+
+class ChainSetZoneResp(_Base):
+    """
+    Representation of Chain Set Zone Response
+    """
+    chainset_zone = ChainSetZone
+
+
+class ChainSetZoneController(BaseController):
+    ATTRIBUTES = {
+        'zone_name': ['name', {'type': 'string', 'mandatory': True,
+                               'key': True}],
+        'zone_direction': ['direction', {'type': 'uint', 'mandatory': False}],
+    }
+    dmpath = 'nsrm.chainset{name=%s,tenant=%s}.chainsetzonerule'
+
+
+    def __init__(self):
+        self.conn = sfc_db.SFCDBMixin()
+
+    @wsme_pecan.wsexpose(ChainSetZoneResp, wtypes.text, ChainSetZone)
+    def post(self, chain_set_id, chainset_zone):
+        """
+        This function implements create record functionality of the RESTful request.
+        It converts the requested body in JSON format to dictionary in string representation and verifies whether
+        required ATTRIBUTES are present in the POST request body and adds the record to DB and UCM if all the
+        UCM_ATTRIBUTES are present.
+
+        :return: Dictionary of the added record.
+        """
+
+        change = chainset_zone.as_dict(api_models.ChainSetZone)
+
+        chain_set_zones = list(self.conn.get_chain_set_zones(
+            chain_set_id=chain_set_id,
+            chain_set_zone_id=chainset_zone.id
+            ))
+
+        if len(chain_set_zones) > 0:
+            error = _("Chain Set Zone with the given id exists")
+            response.translatable_error = error
+            raise wsme.exc.ClientSideError(unicode(error))
+
+        change['chain_set_id'] = chain_set_id
+        chain_sets = list(self.conn.get_chain_sets(chain_set_id=chain_set_id))
+
+        if len(chain_sets) < 1:
+            chain_sets = list(self.conn.get_chain_sets(name=chain_set_id))
+            if len(chain_sets) < 1:
+                raise EntityNotFound(_('Chain Set'), chain_set_id)
+
+        try:
+            chain_set_zone_in = api_models.ChainSetZone(**change)
+        except Exception:
+            LOG.exception("Error while posting Chain Set Zone: %s" % change)
+            error = _("Chain Set incorrect")
+            response.translatable_error = error
+            raise wsme.exc.ClientSideError(unicode(error))
+
+        chain_set_zone_out = self.conn.create_chain_set_zone(chain_set_zone_in)
+
+        # UCM Configuration Start
+        if cfg.CONF.api.ucm_support:
+            body = chain_set_zone_out.as_dict()
+            chain_set = chain_sets[0]
+            ucm_record = utils.generate_ucm_data(self, body,
+                                                 (str(chain_set.name),
+                                                  str(chain_set.tenant)))
+            if UCM_LOADED:
+                try:
+                    ret_val = _ucm.add_record(ucm_record)
+                    if ret_val != 0:
+                        error = _("Unable to add chain set zone record to UCM")
+                        response.translatable_error = error
+                        raise wsme.exc.ClientSideError(unicode(error))
+                except UCMException, msg:
+                    LOG.info(_("UCM Exception raised. %s\n"), msg)
+                    error = _("Unable to add chain set zone record to UCM")
+                    response.translatable_error = error
+                    raise wsme.exc.ClientSideError(unicode(error))
+        # UCM Configuration End
+
+        return ChainSetZoneResp(**(
+            {'chainset_zone': ChainSetZone.from_db_model(chain_set_zone_out)}))
+
+    @wsme_pecan.wsexpose(ChainSetZonesResp, wtypes.text)
+    def get_all(self, chain_set_id):
+        """Return all chains, based on the query provided.
+
+        :param q: Filter rules for the chains to be returned.
+        """
+        #TODO: Need to handle Query filters
+        chain_sets = list(self.conn.get_chain_sets(chain_set_id=chain_set_id))
+
+        if len(chain_sets) < 1:
+            chain_sets = list(self.conn.get_chain_sets(name=chain_set_id))
+            if len(chain_sets) < 1:
+                raise EntityNotFound(_('Chain'), chain_set_id)
+
+        chain_set_zones = []
+        for m in self.conn.get_chain_set_zones(chain_set_id=chain_set_id):
+            chain_set_zones.append(ChainSetZone.from_db_model(m))
+        return ChainSetZonesResp(**(
+            {'chainset_zones': chain_set_zones}))
+
+    @wsme_pecan.wsexpose(ChainSetZoneResp, wtypes.text, wtypes.text)
+    def get_one(self, chain_set_id, cs_zone_id):
+        """Return this chain."""
+        chain_sets = list(self.conn.get_chain_sets(chain_set_id=chain_set_id))
+
+        if len(chain_sets) < 1:
+            chain_sets = list(self.conn.get_chain_sets(name=chain_set_id))
+            if len(chain_sets) < 1:
+                raise EntityNotFound(_('Chain'), chain_set_id)
+
+        cs_zone = self.conn.get_chain_set_zones(chain_set_id=chain_set_id,
+                                                chain_set_zone_id=cs_zone_id)
+
+        return ChainSetZoneResp(**(
+            {'chainset_zone': ChainSetZone.from_db_model(cs_zone)}))
+
+    @wsme_pecan.wsexpose(ChainSetZoneResp, wtypes.text, wtypes.text,
+                         ChainSetZone)
+    def put(self, chain_set_id, cs_zone_id, chainset_zone):
+        """
+        This function implements update record functionality of the RESTful request.
+        It converts the requested body in JSON format to dictionary in string representation and verifies whether
+        required ATTRIBUTES are present in the PUT request body and adds the record to UCM if all the
+        UCM_ATTRIBUTES are present.
+
+        :return: Dictionary of the added record.
+        """
+        chainset_zone.id = cs_zone_id
+        chain_sets = list(self.conn.get_chain_sets(chain_set_id=chain_set_id))
+
+        if len(chain_sets) < 1:
+            raise EntityNotFound(_('Chain Set'), chain_set_id)
+
+        chain_set_zones = list(self.conn.get_chain_set_zones(
+            chain_set_id=chain_set_id,
+            chain_set_zone_id=cs_zone_id))
+
+        if len(chain_set_zones) < 1:
+            raise EntityNotFound(_('Chain Set Zone'), cs_zone_id)
+
+        chainset_zone.chain_set_id = chain_set_id
+        old_cs_zone = ChainSetZone.from_db_model(chain_set_zones[0]).as_dict(
+            api_models.ChainSetZone)
+        updated_cs_zone = chainset_zone.as_dict(api_models.ChainSetZone)
+        old_cs_zone.update(updated_cs_zone)
+        try:
+            cs_zone_in = api_models.ChainSetZone(**old_cs_zone)
+        except Exception:
+            LOG.exception("Error while putting chain Set Zone: %s" %
+                          old_cs_zone)
+            error = _("Chain Set Zone incorrect")
+            response.translatable_error = error
+            raise wsme.exc.ClientSideError(unicode(error))
+
+        cs_zone_out = self.conn.update_chain_set_zone(cs_zone_in)
+
+        #UCM Support Start
+        if cfg.CONF.api.ucm_support:
+            body = cs_zone_out.as_dict()
+            chain_set = chain_sets[0]
+            ucm_record = utils.generate_ucm_data(self, body,
+                                                 (str(chain_set.name),
+                                                  str(chain_set.tenant)))
+
+            if UCM_LOADED:
+                try:
+                    req = {'zone_name':
+                                  {'type': constants.DATA_TYPES['string'],
+                                   'value': str(cs_zone_out.name)},
+                              'dmpath': constants.PATH_PREFIX + '.' +
+                                        self.dmpath % (str(chain_set.name),
+                                                       str(chain_set.tenant))}
+                    try:
+                        rec = _ucm.get_exact_record(req)
+                        if not rec:
+                            error = _("Unable to find chain set record in UCM")
+                            response.translatable_error = error
+                            raise wsme.exc.ClientSideError(unicode(error))
+                    except UCMException, msg:
+                        LOG.info(_("UCM Exception raised. %s\n"), msg)
+                        error = _("Unable to find chain set record in UCM")
+                        response.translatable_error = error
+                        raise wsme.exc.ClientSideError(unicode(error))
+
+                    ret_val = _ucm.update_record(ucm_record)
+                    if ret_val != 0:
+                        error = _("Unable to add chain set record to UCM")
+                        response.translatable_error = error
+                        raise wsme.exc.ClientSideError(unicode(error))
+                except UCMException, msg:
+                    LOG.info(_("UCM Exception raised. %s\n"), msg)
+                    error = _("Unable to Update chain set record to UCM")
+                    response.translatable_error = error
+                    raise wsme.exc.ClientSideError(unicode(error))
+        #UCM Support End
+
+        return ChainSetZoneResp(**(
+            {'chainset_zone': ChainSetZone.from_db_model(cs_zone_out)}))
+
+    @wsme_pecan.wsexpose(None, wtypes.text, wtypes.text, status_code=204)
+    def delete(self, chain_set_id, cs_zone_id):
+        """Delete this Chain set zone."""
+        # ensure chain set zone and chain set  exists before deleting
+        chain_sets = list(self.conn.get_chain_sets(chain_set_id=chain_set_id))
+
+        if len(chain_sets) < 1:
+            chain_sets = list(self.conn.get_chain_sets(name=chain_set_id))
+            if len(chain_sets) < 1:
+                raise EntityNotFound(_('ChainSet'), chain_set_id)
+
+        cs_zones = list(self.conn.get_chain_set_zones(
+            chain_set_id=chain_set_id,
+            chain_set_zone_id=cs_zone_id))
+
+        if len(cs_zones) < 1:
+            cs_zones = list(self.conn.get_chain_set_zones(
+                chain_set_id=chain_set_id,name=cs_zone_id))
+            if len(cs_zones) < 1:
+                raise EntityNotFound(_('ChainSet'), chain_set_id)
+        self.conn.delete_chain_set_zone(cs_zones[0].id)
+
+        #UCM Configuration Start
+        chain_set = chain_sets[0]
+        record = {'zone_name': {'type': constants.DATA_TYPES['string'],
+                                'value': str(cs_zones[0].name)},
+                  'dmpath': constants.PATH_PREFIX + '.' +
+                            self.dmpath % (str(chain_set.name),
+                                           str(chain_set.tenant))}
+        try:
+            ret_val = _ucm.delete_record(record)
+            LOG.debug(_("return value = %s"), str(ret_val))
+            if ret_val != 0:
+                error = _("Unable to delete chain set zone record from UCM")
+                response.translatable_error = error
+                raise wsme.exc.ClientSideError(unicode(error))
+        except UCMException, msg:
+            LOG.info(_("UCM Exception raised. %s"), msg)
+            error = _("Unable to delete chain set  zone record from UCM")
+            response.translatable_error = error
+            raise wsme.exc.ClientSideError(unicode(error))
+        #UCM Configuration End
+
+
 class ChainSet(_Base):
     """
     Representation of Chain Set Structure
@@ -403,6 +671,12 @@ class ChainSet(_Base):
 
     admin_status = bool
     "Admin status"
+
+    zonefull = bool
+    "Zone / Zone less status"
+
+    direction = int
+    "Default zone Direction. (1-left, 2-right)"
 
 
 class ChainSetsResp(_Base):
@@ -422,12 +696,16 @@ class ChainSetResp(_Base):
 class ChainSetController(BaseController):
     ATTRIBUTES = {
         'name': ['name', {'type': 'string', 'mandatory': True, 'key': True}],
-        'tenant': ['tenant', {'type': 'string', 'mandatory': True, 'key': True}],
+        'tenant': ['tenant', {'type': 'string', 'mandatory': True,
+                              'key': True}],
         'enabled': ['admin_status', {'type': 'boolean', 'mandatory': False}],
+        'zone': ['zonefull', {'type': 'boolean', 'mandatory': True}],
+        'zone_direction': ['direction', {'type': 'uint', 'mandatory': True}],
     }
     dmpath = 'nsrm.chainset'
 
     selectionrules = ChainSelRuleController()
+    zones = ChainSetZoneController()
 
     def __init__(self):
         self.conn = sfc_db.SFCDBMixin()
@@ -465,9 +743,11 @@ class ChainSetController(BaseController):
         # UCM Configuration Start
         if cfg.CONF.api.ucm_support:
             body = chain_set_out.as_dict()
+
             ucm_record = utils.generate_ucm_data(self, body, [])
             if UCM_LOADED:
                 try:
+                    print ucm_record
                     ret_val = _ucm.add_record(ucm_record)
                     if ret_val != 0:
                         error = _("Unable to add chain set record to UCM")
@@ -556,7 +836,7 @@ class ChainSetController(BaseController):
 
                     ret_val = _ucm.update_record(ucm_record)
                     if ret_val != 0:
-                        error = _("Unable to add chain set record to UCM")
+                        error = _("Unable to update chain set record to UCM")
                         response.translatable_error = error
                         raise wsme.exc.ClientSideError(unicode(error))
                 except UCMException, msg:
@@ -566,7 +846,7 @@ class ChainSetController(BaseController):
                     raise wsme.exc.ClientSideError(unicode(error))
         #UCM Support End
 
-        return ChainSetResp(**({'chain': ChainSet.from_db_model(chain_set_out)}))
+        return ChainSetResp(**({'chain_set': ChainSet.from_db_model(chain_set_out)}))
 
     @wsme_pecan.wsexpose(None, wtypes.text, status_code=204)
     def delete(self, chain_set_id):
@@ -645,7 +925,8 @@ class ChainNetworkMapController(BaseController):
     ATTRIBUTES = {
         'name': ['name', {'type': 'string', 'mandatory': True, 'key': True}],
         'tenant': ['tenant', {'type': 'string', 'mandatory': True, 'key': True}],
-        'vnname': ['inbound_nw_name', {'type': 'string', 'mandatory': True, 'key': True}],
+        'vnname_in': ['inbound_nw_name', {'type': 'string', 'mandatory': True, 'key': True}],
+        'vnname_out': ['outbound_nw_name', {'type': 'string', 'mandatory': True, 'key': True}],
         'chainset': ['chain_set_name', {'type': 'string', 'mandatory': False}],
         'enabled': ['admin_status', {'type': 'boolean', 'mandatory': False}],
     }
@@ -697,12 +978,20 @@ class ChainNetworkMapController(BaseController):
             inbound_nws = list(self.cns_conn.get_virtualnetworks(nw_id=chain_network_out.inbound_network))
             if len(inbound_nws) < 1:
                 raise EntityNotFound(_('Inbound Network'), chain_network_out.inbound_network)
+            
+        outbound_nws = list(self.cns_conn.get_virtualnetworks(nw_id=chain_network_out.outbound_network))
+
+        if len(outbound_nws) < 1:
+            outbound_nws = list(self.cns_conn.get_virtualnetworks(nw_id=chain_network_out.outbound_network))
+            if len(outbound_nws) < 1:
+                raise EntityNotFound(_('Outbound Network'), chain_network_out.outbound_network)
 
         # UCM Configuration Start
         if cfg.CONF.api.ucm_support:
             body = chain_network_out.as_dict()
             body['chain_set_name'] = chain_sets[0].name
             body['inbound_nw_name'] = inbound_nws[0].name
+            body['outbound_nw_name'] = outbound_nws[0].name
             ucm_record = utils.generate_ucm_data(self, body, [])
             if UCM_LOADED:
                 try:
@@ -829,10 +1118,18 @@ class ChainNetworkMapController(BaseController):
             inbound_nws = list(self.cns_conn.get_virtualnetworks(name=chain_network.inbound_network))
             if len(inbound_nws) < 1:
                 raise EntityNotFound(_('Inbound Network'), chain_network.inbound_network)
+            
+        outbound_nws = list(self.cns_conn.get_virtualnetworks(nw_id=chain_network.outbound_network))
+
+        if len(outbound_nws) < 1:
+            outbound_nws = list(self.cns_conn.get_virtualnetworks(name=chain_network.outbound_network))
+            if len(outbound_nws) < 1:
+                raise EntityNotFound(_('Outbound Network'), chain_network.outbound_network)
 
         record = {'name': {'type': constants.DATA_TYPES['string'], 'value': str(chain_network.name)},
                   'tenant': {'type': constants.DATA_TYPES['string'], 'value': str(chain_network.tenant)},
-                  'vnname': {'type': constants.DATA_TYPES['string'], 'value': str(inbound_nws[0].name)},
+                  'vnname_in': {'type': constants.DATA_TYPES['string'], 'value': str(inbound_nws[0].name)},
+                  'vnname_out': {'type': constants.DATA_TYPES['string'], 'value': str(outbound_nws[0].name)},
                   'dmpath': constants.PATH_PREFIX + '.' + self.dmpath}
         try:
             ret_val = _ucm.delete_record(record)
