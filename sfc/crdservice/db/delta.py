@@ -33,9 +33,22 @@ from nscs.crdservice.openstack.common import rpc
 from nscs.crdservice.openstack.common.rpc.proxy import RpcProxy as rpc_proxy
 from sfc.crdservice.common import exceptions as sfc_exc
 
+from novaclient.v1_1 import client as nova_client
+from nscs.crdservice.common import topics
+from oslo.config import cfg
+import time
 
 import datetime
 LOG = logging.getLogger(__name__)
+
+crd_nwservices_opts = [
+    cfg.StrOpt('admin_user',default="crd"),
+    cfg.StrOpt('admin_password',default="password"),
+    cfg.StrOpt('admin_tenant_name',default="service"),
+    cfg.StrOpt('auth_url'),
+]
+
+cfg.CONF.register_opts(crd_nwservices_opts, "nscs_authtoken")
 
 ############    
 #Network Service  Tables added by Veera
@@ -1091,6 +1104,7 @@ class SfcDeltaDb(db_base_plugin_v2.CrdDbPluginV2):
                                          version_id=version_id)
             context.session.add(appliance_instances_delta)
         payload = self._make_appliance_instances_delta_dict(appliance_instances_delta)
+        payload.update({'chain_id': n['chain_id']})
         method = n['operation']+"_appliance_instance"
         fanoutmsg = {}
         fanoutmsg.update({'method':method,'payload':payload})
@@ -1098,6 +1112,49 @@ class SfcDeltaDb(db_base_plugin_v2.CrdDbPluginV2):
         version = payload['version_id']
         delta[version] = fanoutmsg
         rpc.fanout_cast(context,'crd-consumer', rpc_proxy.make_msg('call_consumer',payload=delta))
+        
+        if n['instance_uuid'] and n['vlan_in'] and n['vlan_out']:
+            res = {'header': 'request',
+                   'instance_uuid': n['instance_uuid'],
+                   'slug': 'vlanpair',
+                   'vlanin': n['vlan_in'],
+                   'vlanout': n['vlan_out'],
+                   'version': '1.0',
+                   'tenant_id': tenant_id}
+            LOG.debug('^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+            LOG.debug('VLAN Pair Message = %s' % str(res))
+            LOG.debug('^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+            send_vlancast(n['instance_uuid'],
+                          {'config': res},
+                          context)
+            
+            appliance_id = n['appliance_id']
+            config_handle_id = None
+            filters = dict()
+            filters['appliance_id'] = [appliance_id]
+            appliance_deltas = self.get_appliances_deltas(context, filters=filters)
+            for app_delta in appliance_deltas:
+                LOG.debug("#@#@#@#@#@#@#@#@")
+                LOG.debug(_("Appliance Deltas: %s"), str(app_delta))
+                LOG.debug("#@#@#@#@#@#@#@#@")
+                if app_delta['config_handle_id']:
+                    config_handle_id = app_delta['config_handle_id']
+                    break
+            
+            res = {'header': 'request',
+                   'config_handle_id': config_handle_id,
+                   'slug': 'firewall',
+                   'version': '1.0',
+                   'tenant_id': tenant_id}
+            LOG.debug('^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+            LOG.debug('Config Handle(Firewall) Message = %s' % str(res))
+            LOG.debug('^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+            send_vlancast(n['instance_uuid'],
+                          {'config': res},
+                          context)
+        
+        
+            
         return self._make_appliance_instances_delta_dict(appliance_instances_delta)
     
     def _get_appliance_instances_delta(self, context, id):
@@ -1171,3 +1228,63 @@ class SfcDeltaDb(db_base_plugin_v2.CrdDbPluginV2):
             LOG.error('Multiple chainset_zones_deltas match for %s' % id)
             raise sfc_exc.chainset_zones_deltaNotFound(chainset_zones_delta_id=id)
         return chainset_zones_delta
+    
+def novaclient():
+    return nova_client.Client(cfg.CONF.nscs_authtoken.admin_user,
+                              cfg.CONF.nscs_authtoken.admin_password,
+                              cfg.CONF.nscs_authtoken.admin_tenant_name,
+                              auth_url=cfg.CONF.nscs_authtoken.auth_url,
+                              service_type="compute")
+
+def _get_relay_topic_name(hostname):
+    return '%s.%s' % (topics.RELAY_AGENT, hostname)
+
+def wait_for_instance_active(instance_uuid, timeout=300):
+    #LOG.debug('Looping for 300 secs')
+    for i in range(0, timeout):
+        time.sleep(1)
+        #LOG.debug('After Sleep.')
+        nt = novaclient()
+        LOG.debug('novaclient = %s' % str(nt))
+        try:
+            instance_details = nt.servers.get(instance_uuid)
+        except Exception, msg:
+            LOG.error(msg)
+            raise q_exc.InstanceErrorState(instance_uuid=instance_uuid)
+        #LOG.debug(_('VM state = %s'),instance_details.__getattribute__(
+        # 'OS-EXT-STS:vm_state'))
+        #LOG.debug('tenant id = %s' % instance_details.__getattribute__(
+        # 'tenant_id'))
+        if instance_details.__getattribute__(
+                'OS-EXT-STS:vm_state') == 'active':
+            #LOG.debug('vm state is active')
+            instance_id = int(instance_details.__getattribute__(
+                'OS-EXT-SRV-ATTR:instance_name').split('instance-')[1], 16)
+            tenant_id = instance_details.__getattribute__('tenant_id')
+            hostname = instance_details.__getattribute__(
+                'OS-EXT-SRV-ATTR:host')
+            return instance_id, tenant_id, hostname
+        elif instance_details.__getattribute__(
+                'OS-EXT-STS:vm_state') == 'error':
+            raise q_exc.InstanceErrorState(instance_id=instance_uuid)
+
+def prepare_msg(instance_id, tenant_id, msg,
+                update_type='config_update'):
+    m = rpc_proxy.make_msg(update_type,
+                      instance_id=instance_id,
+                      tenant_id=tenant_id,
+                      config_request=msg)
+    #LOG.debug(_('msg framed in NwServicesDriver = %s\n\n'),str(m))
+    return m
+
+def send_vlancast(instance_uuid, msg, context):
+    try:
+        instance_id, tenant_id, hostname = wait_for_instance_active(
+            instance_uuid)
+    except q_exc.InstanceErrorState, msg:
+        LOG.error(_(msg))
+        raise q_exc.InstanceNotFound(instance_uuid=instance_uuid)
+    relay_topic = _get_relay_topic_name(hostname)
+    rpc.cast(context,
+             relay_topic,
+             prepare_msg(instance_uuid, tenant_id, msg))

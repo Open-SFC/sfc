@@ -59,3 +59,6 @@ class ChainRefExists(InUse):
     
 class chainset_zones_deltaNotFound(NotFound):
     message = _("There is NO Chainset Zone Delta found for the ID %(chainset_zones_delta_id)s")
+    
+class ChainSetNotFound(NotFound):
+    message = _("Chainset %(chainset_id)s could not be found")

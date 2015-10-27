@@ -423,11 +423,11 @@ class SFCPlugin(SFCPluginBase, SFCListener):
 	###Insert default Zone
 	#zone = {'zone':{'zone': 'default', 'direction': 'left'}}
 	#self.create_chainset_zone(context, zone, data['id'])
-	
-        v.update({'operation' : 'create'})
-        delta={}
-        delta.update({'chainsets_delta':v})
-        result_delta = self.sfcdelta.create_chainsets_delta(context,delta)
+	if data['name'] != 'Default Chainset':
+	    v.update({'operation' : 'create'})
+	    delta={}
+	    delta.update({'chainsets_delta':v})
+	    result_delta = self.sfcdelta.create_chainsets_delta(context,delta)
         return data
 
     def update_chainset(self, context, chainset_id, chainset):
@@ -465,7 +465,10 @@ class SFCPlugin(SFCPluginBase, SFCListener):
         v.update({'operation' : 'create'})
         delta={}
         delta.update({'chainrules_delta':v})
-        result_delta = self.sfcdelta.create_chainrules_delta(context,delta)
+	cbr = v
+	chain_id=cbr.get('chain_id') or ''
+	if chain_id:
+	    result_delta = self.sfcdelta.create_chainrules_delta(context,delta)
         return data
 
     def update_chainset_rule(self, context, rule_id, chainset_id, rule):
@@ -476,7 +479,10 @@ class SFCPlugin(SFCPluginBase, SFCListener):
         v.update({'operation' : 'update'})
         delta={}
         delta.update({'chainrules_delta':v})
-        result_delta = self.sfcdelta.create_chainrules_delta(context,delta)
+	cbr = v
+	chain_id=cbr.get('chain_id') or ''
+	if chain_id:
+	    result_delta = self.sfcdelta.create_chainrules_delta(context,delta)
         return data
 
     def delete_chainset_rule(self, context, rule_id, chainset_id):
@@ -487,7 +493,10 @@ class SFCPlugin(SFCPluginBase, SFCListener):
         v.update({'operation' : 'delete'})
         delta={}
         delta.update({'chainrules_delta':v})
-        result_delta = self.sfcdelta.create_chainrules_delta(context,delta)
+	cbr = v
+	chain_id=cbr.get('chain_id') or ''
+	if chain_id:
+	    result_delta = self.sfcdelta.create_chainrules_delta(context,delta)
 
     def get_chainset_rule(self, context, rule_id, chainset_id, fields=None):
         # LOG.debug(_('Get rule %s'), rule_id)
@@ -573,12 +582,24 @@ class SFCPlugin(SFCPluginBase, SFCListener):
 	chain_appliance = self.get_chain_appliance(context, appliance_id, chain_id)
 	appliance_map_id = chain_appliance['id']
 	instance['instance'].update({'appliance_map_id': appliance_map_id})
-        v = self.db.create_chain_appliance_map_instance(context, instance)
-	return v
+	v = self.db.create_chain_appliance_map_instance(context, instance)
+	data = v
+	v.update({'operation' : 'create'})
+	v.update({'chain_id': chain_id})
+	v.update({'appliance_id': appliance_id})
+        delta={}
+        delta.update({'appliance_instances_delta':v})
+        result_delta = self.sfcdelta.create_appliance_instances_delta(context,delta)
+	return data
     
     def update_chain_appliance_instance(self, context, chain_appliance_map_instance_id, chain_appliance_map_instance):
         v = self.db.update_chain_appliance_map_instance(context, chain_appliance_map_instance_id, chain_appliance_map_instance)
-	return v
+	data = v
+	v.update({'operation' : 'update'})
+        delta={}
+        delta.update({'appliance_instances_delta':v})
+        result_delta = self.sfcdelta.create_appliance_instances_delta(context,delta)
+	return data
     
     def delete_chain_appliance_instance(self, context, instance_id):
         filters = dict()

@@ -339,7 +339,7 @@ class SfcDelta(object):
                 verid = arr[0]['version_id']
                 app_instance.update(
                     {'appliance_instance_id': app_instance['id'], 'operation': 'create',
-                        'version_id': current_version, 'chain_id': chain_app_details['chain_id']})
+                     'version_id': current_version, 'chain_id': chain_app_details['chain_id']})
                 app_instance_message = {}
                 app_instance_message.update(
                     {'method': 'create_appliance_instance', 'payload': app_instance})

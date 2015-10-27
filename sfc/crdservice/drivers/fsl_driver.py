@@ -267,8 +267,15 @@ class SFCDriver(proxy.RpcProxy):
             security_groups.append(security_group_name)
 
             nics = []
-            nic = {"net-id": inbound_net_id, "v4-fixed-ip": ""}
-            nics.append(nic)
+            if inbound_net_id == outbound_net_id:
+                nic = {"net-id": inbound_net_id, "v4-fixed-ip": ""}
+                nics.append(nic)
+            else:
+                nic1 = {"net-id": inbound_net_id, "v4-fixed-ip": ""}
+                nics.append(nic1)
+                
+                nic2 = {"net-id": outbound_net_id, "v4-fixed-ip": ""}
+                nics.append(nic2)
             
             config_handle_id = appliance['config_handle_id']
             if (config_handle_id == ''):
@@ -411,31 +418,31 @@ class SFCDriver(proxy.RpcProxy):
 
                                 ###Send Vlan Pairs to Relay Agent
 
-                                res = {'header': 'request',
-                                       'instance_uuid': instance_uuid,
-                                       'slug': 'vlanpair',
-                                       'vlanin': vlan_in,
-                                       'vlanout': vlan_out,
-                                       'version': '1.0',
-                                       'tenant_id': context.tenant_id}
-                                LOG.debug('^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
-                                LOG.debug('VLAN Pair Message = %s' % str(res))
-                                LOG.debug('^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
-                                self.send_vlancast(instance_uuid,
-                                                   {'config': res})
+                                #res = {'header': 'request',
+                                #       'instance_uuid': instance_uuid,
+                                #       'slug': 'vlanpair',
+                                #       'vlanin': vlan_in,
+                                #       'vlanout': vlan_out,
+                                #       'version': '1.0',
+                                #       'tenant_id': context.tenant_id}
+                                #LOG.debug('^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+                                #LOG.debug('VLAN Pair Message = %s' % str(res))
+                                #LOG.debug('^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+                                #self.send_vlancast(instance_uuid,
+                                #                   {'config': res})
 
                             y += 1
             
-            config_handle_details = self.db.get_config_handle(context,
-                                                              config_handle_id)
-            res = {'header': 'request',
-                   'config_handle_id': config_handle_id,
-                   'slug': config_handle_details['slug'],
-                   'version': '1.0',
-                   'tenant_id': config_handle_details['tenant_id']}
-            if config_handle_details['config_mode'] == 'NFV':
-                str1 = self.send_cast(config_handle_id, {'config':res})
-                pass
+            #config_handle_details = self.db.get_config_handle(context,
+            #                                                  config_handle_id)
+            #res = {'header': 'request',
+            #       'config_handle_id': config_handle_id,
+            #       'slug': config_handle_details['slug'],
+            #       'version': '1.0',
+            #       'tenant_id': config_handle_details['tenant_id']}
+            #if config_handle_details['config_mode'] == 'NFV':
+            #    str1 = self.send_cast(config_handle_id, {'config':res})
+            #    pass
 
             count += 1
             #time.sleep(120)

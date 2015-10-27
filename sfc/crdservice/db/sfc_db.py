@@ -22,6 +22,7 @@ from nscs.crdservice.db import model_base, db_base_plugin_v2
 from nscs.crdservice.common import exceptions as q_exc
 from nscs.crdservice.openstack.common import log as logging
 from nscs.crdservice.openstack.common import uuidutils
+from sfc.crdservice.common import exceptions as sfc_exc
 
 LOG = logging.getLogger(__name__)
 
@@ -100,6 +101,7 @@ class SFCChain(model_base.BASEV2, model_base.HasId, model_base.HasTenant):
     __tablename__ = 'sfc_chains'
     name = sa.Column(sa.String(50), nullable=False)
     auto_boot = sa.Column(sa.Boolean)
+    extras = sa.Column(sa.Text())
 
 
 class SFCChainBypassRule(model_base.BASEV2, model_base.HasId,
@@ -145,10 +147,12 @@ class SFCChainSelectionRule(model_base.BASEV2, model_base.HasId,
     """Represents a v2 crd FSL service."""
     __tablename__ = 'sfc_chain_selection_rules'
     name = sa.Column(sa.String(50), nullable=False)
-    chainset_id = sa.Column(sa.String(36), sa.ForeignKey('sfc_chainsets.id'),
-                            nullable=False)
-    chain_id = sa.Column(sa.String(36), sa.ForeignKey('sfc_chains.id'),
-                         nullable=False)
+    #chainset_id = sa.Column(sa.String(36), sa.ForeignKey('sfc_chainsets.id'),
+    #                        nullable=False)
+    #chain_id = sa.Column(sa.String(36), sa.ForeignKey('sfc_chains.id'),
+    #                     nullable=False)
+    chainset_id = sa.Column(sa.String(36))
+    chain_id = sa.Column(sa.String(36))
     src_mac_type = sa.Column(sa.String(50))
     dest_mac_type = sa.Column(sa.String(50))
     src_mac = sa.Column(sa.String(50))
@@ -591,7 +595,8 @@ class SFCPluginDb(db_base_plugin_v2.CrdDbPluginV2):
         res = {'id': chain['id'],
                'name': chain['name'],
                'tenant_id': chain['tenant_id'],
-               'auto_boot': chain['auto_boot']}
+               'auto_boot': chain['auto_boot'],
+               'extras': chain['extras']}
 
         return self._fields(res, fields)
 
@@ -607,11 +612,15 @@ class SFCPluginDb(db_base_plugin_v2.CrdDbPluginV2):
     def create_chain(self, context, chain):
         n = chain['chain']
         tenant_id = self._get_tenant_id_for_create(context, n)
+        extras = ''
+        if 'extras' in n:
+            extras = n['extras']
         with context.session.begin(subtransactions=True):
             chain = SFCChain(tenant_id=tenant_id,
                              id=self.__get_id(n),
                              name=n['name'],
-                             auto_boot=n['auto_boot'])
+                             auto_boot=n['auto_boot'],
+                             extras=extras)
             context.session.add(chain)
         return self._make_chain_dict(chain)
 
@@ -828,10 +837,10 @@ class SFCPluginDb(db_base_plugin_v2.CrdDbPluginV2):
         try:
             chainset = self._get_by_id(context, SFCChainSet, id)
         except exc.NoResultFound:
-            raise q_exc.ChainSetNotFound(chainset_id=id)
+            raise sfc_exc.ChainSetNotFound(chainset_id=id)
         except exc.MultipleResultsFound:
             LOG.error('Multiple chainsets match for %s' % id)
-            raise q_exc.ChainSetNotFound(chainset_id=id)
+            raise sfc_exc.ChainSetNotFound(chainset_id=id)
         return chainset
 
     def delete_chainset(self, context, id):
@@ -909,7 +918,7 @@ class SFCPluginDb(db_base_plugin_v2.CrdDbPluginV2):
                                          dp_start=cbr['dp_start'],
                                          dp_end=cbr['dp_end'],
                                          ip_protocol=cbr['ip_protocol'],
-                                         chain_id=cbr['chain_id'],
+                                         chain_id=cbr.get('chain_id') or '',
                                          chainset_id=chainset_id)
             context.session.add(rule)
         return self._make_chainset_rule_dict(rule)
