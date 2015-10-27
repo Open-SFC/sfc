@@ -291,10 +291,12 @@ class SFCConsumerPlugin(proxy.RpcProxy):
             chain_set_name = payload.get('chainset_id')[:16]
             chain_set_name = payload.get('name') + "_" + chain_set_name
             zonefull = payload.get('zonefull')
+            direction = payload.get('direction')
 
             msg = {"chain_set":{"name": chain_set_name,
                     "admin_status": True,
                     "zonefull": zonefull,
+                    "direction": direction
                    }
             }
         elif message_type == 'create_chain_selection_rule':
